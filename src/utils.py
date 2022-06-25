@@ -235,7 +235,7 @@ def evaluation(logits, labels):
         labels = np.array(labels)
 
     if isinstance(logits, type(tf.constant([0]))):
-        sess = tf.Session()
+        sess = tf.compat.v1.Session()
         logits = logits.eval(session=sess)
         labels = labels.eval(session=sess)
 
@@ -338,7 +338,7 @@ def write_and_encode(files_path_list, tf_record_file_path="train.tfrecords", fil
     if os.path.exists(tf_record_file_path):
         pass
     else:
-        writer = tf.python_io.TFRecordWriter(tf_record_file_path)
+        writer = tf.io.TFRecordWriter(tf_record_file_path)
 
         for index, files_path in enumerate(files_path_list):
             files_list = get_files_list(files_path, files_type, start_idx, end_idx)
@@ -356,17 +356,17 @@ def write_and_encode(files_path_list, tf_record_file_path="train.tfrecords", fil
 
 
 def read_and_decode(filename, n_epoch=3, is_shuffle=True, data_height=200, data_width=576, data_channel=1):
-    reader = tf.TFRecordReader()
-    filename_queue = tf.train.string_input_producer([filename], shuffle=is_shuffle, num_epochs=n_epoch)
+    reader = tf.compat.v1.TFRecordReader()
+    filename_queue = tf.compat.v1.train.string_input_producer([filename], shuffle=is_shuffle, num_epochs=n_epoch)
     _, serialized_example = reader.read(filename_queue)
 
-    features = tf.parse_single_example(
-        serialized_example,
-        features={'label': tf.FixedLenFeature([], tf.int64),
-                  'data_raw': tf.FixedLenFeature([], tf.string)
+    features = tf.io.parse_single_example(
+        serialized=serialized_example,
+        features={'label': tf.io.FixedLenFeature([], tf.int64),
+                  'data_raw': tf.io.FixedLenFeature([], tf.string)
                   })
 
-    data = tf.decode_raw(features['data_raw'], tf.float32)
+    data = tf.io.decode_raw(features['data_raw'], tf.float32)
     data = tf.reshape(data, [data_height, data_width, data_channel])
     labels = tf.cast(features['label'], tf.int32)
 
@@ -378,7 +378,7 @@ def create_batch(filename, batch_size):
 
     min_after_dequeue = 10 * batch_size
     capacity = 2 * min_after_dequeue
-    data_batch, label_batch = tf.train.shuffle_batch([data, label],
+    data_batch, label_batch = tf.compat.v1.train.shuffle_batch([data, label],
                                                      batch_size=batchsize,
                                                      capacity=capacity,
                                                      num_threads=8,
@@ -402,7 +402,7 @@ def get_variables_number(trainable_variables):
         shapes = variable.get_shape()
         variable_parameters = 1
         for shape in shapes:
-            variable_parameters *= shape.value
+            variable_parameters *= shape
         total_parameters += variable_parameters
 
     return total_parameters

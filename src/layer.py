@@ -12,7 +12,7 @@ Modified on 2018.09.17
 from HPFs.filters import *
 import tensorflow as tf
 from math import floor
-from tensorflow.contrib.layers.python.layers import batch_norm
+from tensorflow.keras.layers import BatchNormalization
 
 
 def pool_layer(input_data, height, width, x_stride, y_stride, name, is_max_pool=True, padding="VALID"):
@@ -31,7 +31,7 @@ def pool_layer(input_data, height, width, x_stride, y_stride, name, is_max_pool=
     """
 
     if is_max_pool is True:
-        output = tf.nn.max_pool(input_data,
+        output = tf.nn.max_pool2d(input=input_data,
                                 ksize=[1, height, width, 1],
                                 strides=[1, x_stride, y_stride, 1],
                                 padding=padding,
@@ -39,7 +39,7 @@ def pool_layer(input_data, height, width, x_stride, y_stride, name, is_max_pool=
         pooling_type = "max_pooling"
 
     else:
-        output = tf.nn.avg_pool(input_data,
+        output = tf.nn.avg_pool2d(input=input_data,
                                 ksize=[1, height, width, 1],
                                 strides=[1, x_stride, y_stride, 1],
                                 padding=padding,
@@ -79,8 +79,10 @@ def batch_normalization(input_data, name, activation_method="relu", is_train=Tru
     :return:
         output: output after batch normalization
     """
-    output = batch_norm(inputs=input_data, decay=0.9, center=True, scale=True, epsilon=1e-5, scope=name, updates_collections=None,
-                        reuse=tf.AUTO_REUSE, is_training=is_train, zero_debias_moving_mean=True)
+    output = BatchNormalization(momentum=0.9, center=True, scale=True, epsilon=1e-5
+                                #, updates_collections=None, reuse=tf.compat.v1.AUTO_REUSE, is_training=is_train, zero_debias_moving_mean=True
+                                )(input_data, training=is_train)
+    output.scope_name = name
     output = activation_layer(input_data=output,
                               activation_method=activation_method)
 
@@ -102,7 +104,7 @@ def batch_normalization_origin(input_data, name, offset=0.0, scale=1.0, variance
         output: a 4-D tensor [batch_size, height, width. channel]
     """
 
-    batch_mean, batch_var = tf.nn.moments(input_data, [0])
+    batch_mean, batch_var = tf.nn.moments(x=input_data, axes=[0])
     output_data = tf.nn.batch_normalization(x=input_data,
                                             mean=batch_mean,
                                             variance=batch_var,
@@ -131,7 +133,7 @@ def dropout(input_data, keep_pro=0.5, name="dropout", seed=None, is_train=True):
     """
     if is_train is True:
         output = tf.nn.dropout(x=input_data,
-                               keep_prob=keep_pro,
+                               rate=1 - (keep_pro),
                                name=name,
                                seed=seed)
         print("name: %s, keep_pro: %f" % (name, keep_pro))
@@ -165,24 +167,24 @@ def fc_layer(input_data, output_dim, name, activation_method="relu", alpha=None,
         if init_method is None:
             output = input_data
         else:
-            with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+            with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE):
                 # the method of weights initialization
                 if init_method == "xavier":
-                    initializer = tf.contrib.layers.xavier_initializer()
+                    initializer = tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")
                 elif init_method == "gaussian":
-                    initializer = tf.random_normal_initializer(stddev=0.01)
+                    initializer = tf.compat.v1.random_normal_initializer(stddev=0.01)
                 else:
-                    initializer = tf.truncated_normal_initializer(stddev=0.01)
+                    initializer = tf.compat.v1.truncated_normal_initializer(stddev=0.01)
 
-                weights = tf.get_variable(name="weight",
+                weights = tf.compat.v1.get_variable(name="weight",
                                           shape=[input_dim, output_dim],
                                           dtype=tf.float32,
                                           initializer=initializer)
 
-                biases = tf.get_variable(name="biases",
+                biases = tf.compat.v1.get_variable(name="biases",
                                          shape=[output_dim],
                                          dtype=tf.float32,
-                                         initializer=tf.constant_initializer(0.0))
+                                         initializer=tf.compat.v1.constant_initializer(0.0))
 
                 output = tf.nn.bias_add(value=tf.matmul(flat_input_data, weights),
                                         bias=biases,
@@ -218,27 +220,27 @@ def fconv_layer(input_data, filter_num, name, is_train=True, padding="VALID", in
         shape = input_data.get_shape()
         conv_height, conv_width, conv_channel = shape[1].value, shape[2].value, shape[3].value
 
-        with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
+        with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE):
             # the method of weights initialization
             if init_method == "xavier":
-                initializer = tf.contrib.layers.xavier_initializer()
+                initializer = tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")
             elif init_method == "gaussian":
-                initializer = tf.random_normal_initializer(stddev=0.01)
+                initializer = tf.compat.v1.random_normal_initializer(stddev=0.01)
             else:
-                initializer = tf.truncated_normal_initializer(stddev=0.01)
+                initializer = tf.compat.v1.truncated_normal_initializer(stddev=0.01)
 
-            weights = tf.get_variable(name="weights",
+            weights = tf.compat.v1.get_variable(name="weights",
                                       shape=[conv_height, conv_width, conv_channel, filter_num],
                                       dtype=tf.float32,
                                       initializer=initializer,
                                       trainable=is_pretrain)
-            biases = tf.get_variable(name="biases",
+            biases = tf.compat.v1.get_variable(name="biases",
                                      shape=[filter_num],
                                      dtype=tf.float32,
-                                     initializer=tf.constant_initializer(0.0),
+                                     initializer=tf.compat.v1.constant_initializer(0.0),
                                      trainable=is_pretrain)
             feature_map = tf.nn.conv2d(input=input_data,
-                                       filter=weights,
+                                       filters=weights,
                                        strides=[1, 1, 1, 1],
                                        padding=padding,
                                        name="conv")
@@ -289,13 +291,13 @@ def activation_layer(input_data, activation_method="None", alpha=0.2):
     elif activation_method == "softplus":
         output = tf.nn.softplus(input_data, name="softplus")
     elif activation_method == "crelu":
-        output = tf.nn.crelu(input_data, "crelu")
+        output = tf.nn.crelu(features=input_data, name="crelu")
     elif activation_method == "elu":
         output = tf.nn.elu(input_data, name="elu")
     elif activation_method == "softsign":
         output = tf.nn.softsign(input_data, "softsign")
     elif activation_method == "leakrelu":
-        output = tf.where(input_data < 0.0, alpha * input_data, input_data)
+        output = tf.compat.v1.where(input_data < 0.0, alpha * input_data, input_data)
     else:
         output = input_data
 
@@ -329,29 +331,29 @@ def conv_layer(input_data, height, width, x_stride, y_stride, filter_num, name,
 
     # the method of weights initialization
     if init_method == "xavier":
-        initializer = tf.contrib.layers.xavier_initializer()
+        initializer = tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution="uniform")
     elif init_method == "gaussian":
-        initializer = tf.random_normal_initializer(stddev=0.01)
+        initializer = tf.compat.v1.random_normal_initializer(stddev=0.01)
     else:
-        initializer = tf.truncated_normal_initializer(stddev=0.01)
+        initializer = tf.compat.v1.truncated_normal_initializer(stddev=0.01)
 
     # the initialization of the weights and biases
-    with tf.variable_scope(name, reuse=tf.AUTO_REUSE):
-        weights = tf.get_variable(name="weights",
+    with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE):
+        weights = tf.compat.v1.get_variable(name="weights",
                                   shape=[height, width, channel, filter_num],
                                   dtype=tf.float32,
                                   initializer=initializer,
                                   trainable=is_pretrain)
-        biases = tf.get_variable(name="biases",
+        biases = tf.compat.v1.get_variable(name="biases",
                                  shape=[filter_num],
                                  dtype=tf.float32,
-                                 initializer=tf.constant_initializer(0.0),
+                                 initializer=tf.compat.v1.constant_initializer(0.0),
                                  trainable=is_pretrain)
 
         # the method of convolution
         if atrous == 1:
             feature_map = tf.nn.conv2d(input=input_data,
-                                       filter=weights,
+                                       filters=weights,
                                        strides=[1, x_stride, y_stride, 1],
                                        padding=padding,
                                        name="conv")
@@ -393,9 +395,9 @@ def static_conv_layer(input_data, kernel, x_stride, y_stride, name, padding="VAL
     :return:
         feature_map: 4-D tensor [number, height, width, channel]
     """
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         feature_map = tf.nn.conv2d(input=input_data,
-                                   filter=kernel,
+                                   filters=kernel,
                                    strides=[1, x_stride, y_stride, 1],
                                    padding=padding,
                                    name="conv")
@@ -426,7 +428,7 @@ def phase_split(input_data, block_size=8, name=None):
                                      name="phase_aware_" + str(block_size) + "x" + str(block_size) + "_0")
 
     output = tf.nn.conv2d(input=input_data,
-                          filter=phase_split_kernel,
+                          filters=phase_split_kernel,
                           strides=[1, block_size, block_size, 1],
                           padding="VALID",
                           name="phase_split_" + str(block_size) + "x" + str(block_size) + "_0")
@@ -440,7 +442,7 @@ def phase_split(input_data, block_size=8, name=None):
                                          name="phase_aware_" + str(block_size) + "x" + str(block_size) + "_" + str(i + 1))
 
         result = tf.nn.conv2d(input=input_data,
-                              filter=phase_split_kernel,
+                              filters=phase_split_kernel,
                               strides=[1, block_size, block_size, 1],
                               padding="VALID",
                               name="phase_split_" + str(block_size) + "x" + str(block_size) + "_" + str(i + 1))
@@ -504,7 +506,7 @@ def diff_layer(input_data, is_diff, is_diff_abs, is_abs_diff, order, direction, 
 
         if is_diff is True:
             output = tf.nn.conv2d(input=input_data,
-                                  filter=filter_diff,
+                                  filters=filter_diff,
                                   strides=[1, 1, 1, 1],
                                   padding=padding)
 
@@ -512,7 +514,7 @@ def diff_layer(input_data, is_diff, is_diff_abs, is_abs_diff, order, direction, 
 
         elif is_diff_abs is True:
             output = tf.nn.conv2d(input=input_data,
-                                  filter=filter_diff,
+                                  filters=filter_diff,
                                   strides=[1, 1, 1, 1],
                                   padding=padding)
             output = tf.abs(output)
@@ -522,7 +524,7 @@ def diff_layer(input_data, is_diff, is_diff_abs, is_abs_diff, order, direction, 
         elif is_abs_diff is True:
             input_data = tf.abs(input_data)
             output = tf.nn.conv2d(input=input_data,
-                                  filter=filter_diff,
+                                  filters=filter_diff,
                                   strides=[1, 1, 1, 1],
                                   padding=padding)
 
@@ -569,19 +571,19 @@ def loss_layer(logits, labels, logits_siamese=None, is_regulation=False, coeff=1
     :return:
         loss_total: loss with regularization
     """
-    with tf.variable_scope("loss"):
+    with tf.compat.v1.variable_scope("loss"):
         if method == "sparse_softmax_cross_entropy":
-            loss = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels)
+            loss = tf.compat.v1.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels)
         elif method == "siamese_loss":
             loss = siamese_loss(logits1=logits, logits2=logits_siamese, labels=labels)
         else:
-            loss = tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels)
+            loss = tf.compat.v1.losses.sparse_softmax_cross_entropy(logits=logits, labels=labels)
 
-        loss = tf.reduce_mean(loss)
+        loss = tf.reduce_mean(input_tensor=loss)
 
         if is_regulation is True:
-            tv = tf.trainable_variables()
-            regularization_cost = coeff * tf.reduce_sum([tf.nn.l2_loss(v) for v in tv])
+            tv = tf.compat.v1.trainable_variables()
+            regularization_cost = coeff * tf.reduce_sum(input_tensor=[tf.nn.l2_loss(v) for v in tv])
             loss_total = loss + regularization_cost
         else:
             loss_total = loss
@@ -596,10 +598,10 @@ def accuracy_layer(logits, labels):
     :param labels: label
     :return: accuracy
     """
-    with tf.variable_scope("accuracy"):
-        predictions = tf.nn.in_top_k(logits, labels, 1, name="predictions")
+    with tf.compat.v1.variable_scope("accuracy"):
+        predictions = tf.nn.in_top_k(predictions=logits, targets=labels, k=1, name="predictions")
         results = tf.cast(predictions, tf.float16)
-        accuracy = tf.reduce_mean(results)
+        accuracy = tf.reduce_mean(input_tensor=results)
 
         return accuracy
 
@@ -613,7 +615,7 @@ def evaluation(logits, labels):
     true_positive_rate, true_negative_rate, precision, recall, f1_score
     """
     predictions = tf.nn.softmax(logits)
-    predictions = tf.argmax(predictions, 1)
+    predictions = tf.argmax(input=predictions, axis=1)
 
     ones_like_labels = tf.ones_like(labels)
     zeros_like_labels = tf.zeros_like(labels)
@@ -621,25 +623,25 @@ def evaluation(logits, labels):
     zeros_like_predictions = tf.zeros_like(predictions)
 
     true_positive = tf.reduce_sum(
-        tf.cast(
+        input_tensor=tf.cast(
             tf.logical_and(
                 tf.equal(labels, ones_like_labels),
                 tf.equal(predictions, ones_like_predictions)), tf.float32))
 
     true_negative = tf.reduce_sum(
-        tf.cast(
+        input_tensor=tf.cast(
             tf.logical_and(
                 tf.equal(labels, zeros_like_labels),
                 tf.equal(predictions, zeros_like_predictions)), tf.float32))
 
     false_positive = tf.reduce_sum(
-        tf.cast(
+        input_tensor=tf.cast(
             tf.logical_and(
                 tf.equal(labels, zeros_like_labels),
                 tf.equal(predictions, ones_like_predictions)), tf.float32))
 
     false_negative = tf.reduce_sum(
-        tf.cast(
+        input_tensor=tf.cast(
             tf.logical_and(
                 tf.equal(labels, ones_like_labels),
                 tf.equal(predictions, zeros_like_predictions)), tf.float32))
@@ -661,7 +663,7 @@ def evaluation_full(logits, labels):
     true_positive_rate, true_negative_rate, precision, recall, f1_score
     """
     predictions = tf.nn.softmax(logits)
-    predictions = tf.argmax(predictions, 1)
+    predictions = tf.argmax(input=predictions, axis=1)
 
     ones_like_labels = tf.ones_like(labels)
     zeros_like_labels = tf.zeros_like(labels)
@@ -669,25 +671,25 @@ def evaluation_full(logits, labels):
     zeros_like_predictions = tf.zeros_like(predictions)
 
     true_positive = tf.reduce_sum(
-        tf.cast(
+        input_tensor=tf.cast(
             tf.logical_and(
                 tf.equal(labels, ones_like_labels),
                 tf.equal(predictions, ones_like_predictions)), tf.float32))
 
     true_negative = tf.reduce_sum(
-        tf.cast(
+        input_tensor=tf.cast(
             tf.logical_and(
                 tf.equal(labels, zeros_like_labels),
                 tf.equal(predictions, zeros_like_predictions)), tf.float32))
 
     false_positive = tf.reduce_sum(
-        tf.cast(
+        input_tensor=tf.cast(
             tf.logical_and(
                 tf.equal(labels, zeros_like_labels),
                 tf.equal(predictions, ones_like_predictions)), tf.float32))
 
     false_negative = tf.reduce_sum(
-        tf.cast(
+        input_tensor=tf.cast(
             tf.logical_and(
                 tf.equal(labels, ones_like_labels),
                 tf.equal(predictions, zeros_like_predictions)), tf.float32))
@@ -707,11 +709,11 @@ def error_layer(logits, labels):
     :param labels: label
     :return: error rate
     """
-    with tf.variable_scope("accuracy"):
+    with tf.compat.v1.variable_scope("accuracy"):
         logits = tf.nn.softmax(logits)
-        results = tf.cast(tf.argmax(logits, 1), tf.int32)
+        results = tf.cast(tf.argmax(input=logits, axis=1), tf.int32)
         wrong_prediction = tf.not_equal(results, labels)
-        accuracy = tf.reduce_mean(tf.cast(wrong_prediction, tf.float32))
+        accuracy = tf.reduce_mean(input_tensor=tf.cast(wrong_prediction, tf.float32))
 
         return accuracy
 
@@ -726,11 +728,11 @@ def siamese_loss(logits1, logits2, labels):
     """
     constant = 5
     constant = tf.constant(constant, name="constant", dtype=tf.float32)
-    distance = tf.sqrt(tf.reduce_sum(tf.square(logits1 - logits2), 1))
+    distance = tf.sqrt(tf.reduce_sum(input_tensor=tf.square(logits1 - logits2), axis=1))
     pos = tf.multiply(tf.multiply(labels, 2 / constant), tf.square(distance))
     neg = tf.multiply(tf.multiply(1 - labels, 2 * constant), tf.exp(-2.77 / constant * distance))
     loss = tf.add(pos, neg)
-    loss = tf.reduce_mean(loss)
+    loss = tf.reduce_mean(input_tensor=loss)
     
     return loss
 
@@ -765,38 +767,38 @@ def optimizer(losses, learning_rate, global_step, optimizer_type="Adam", beta1=0
     :return:
         train_op: optimizer
     """
-    with tf.name_scope("optimizer"):
+    with tf.compat.v1.name_scope("optimizer"):
         if optimizer_type == "GradientDescent":
-            opt = tf.train.GradientDescentOptimizer(learning_rate=learning_rate,
+            opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=learning_rate,
                                                     name=optimizer_type)
         elif optimizer_type == "Adagrad":
-            opt = tf.train.AdagradOptimizer(learning_rate=learning_rate,
+            opt = tf.compat.v1.train.AdagradOptimizer(learning_rate=learning_rate,
                                             initial_accumulator_value=initial_accumulator_value,
                                             name=optimizer_type)
 
         elif optimizer_type == "Adam":
-            opt = tf.train.AdamOptimizer(learning_rate=learning_rate,
+            opt = tf.compat.v1.train.AdamOptimizer(learning_rate=learning_rate,
                                          beta1=beta1,
                                          beta2=beta2,
                                          epsilon=epsilon,
                                          name=optimizer_type)
 
         elif optimizer_type == "Momentum":
-            opt = tf.train.MomentumOptimizer(learning_rate=learning_rate,
+            opt = tf.compat.v1.train.MomentumOptimizer(learning_rate=learning_rate,
                                              momentum=momentum,
                                              name=optimizer_type)
 
         elif optimizer_type == "RMSProp":
-            opt = tf.train.RMSPropOptimizer(learning_rate=learning_rate,
+            opt = tf.compat.v1.train.RMSPropOptimizer(learning_rate=learning_rate,
                                             decay=decay,
                                             momentum=momentum,
                                             epsilon=epsilon,
                                             name=optimizer_type)
         else:
-            opt = tf.train.GradientDescentOptimizer(learning_rate=learning_rate,
+            opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=learning_rate,
                                                     name=optimizer_type)
 
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
             train_op = opt.minimize(loss=losses,
                                     global_step=global_step,
@@ -833,13 +835,13 @@ def learning_rate_decay(init_learning_rate, global_step, decay_steps, decay_rate
     if decay_method == "fixed":
         decayed_learning_rate = init_learning_rate
     elif decay_method == "exponential":
-        decayed_learning_rate = tf.train.exponential_decay(init_learning_rate, global_step, decay_steps, decay_rate, staircase)
+        decayed_learning_rate = tf.compat.v1.train.exponential_decay(init_learning_rate, global_step, decay_steps, decay_rate, staircase)
     elif decay_method == "inverse_time":
-        decayed_learning_rate = tf.train.inverse_time_decay(init_learning_rate, global_step, decay_steps, decay_rate, staircase)
+        decayed_learning_rate = tf.compat.v1.train.inverse_time_decay(init_learning_rate, global_step, decay_steps, decay_rate, staircase)
     elif decay_method == "natural_exp":
-        decayed_learning_rate = tf.train.natural_exp_decay(init_learning_rate, global_step, decay_steps, decay_rate, staircase)
+        decayed_learning_rate = tf.compat.v1.train.natural_exp_decay(init_learning_rate, global_step, decay_steps, decay_rate, staircase)
     elif decay_method == "polynomial":
-        decayed_learning_rate = tf.train.polynomial_decay(init_learning_rate, global_step, decay_steps, decay_rate, end_learning_rate, power, cycle)
+        decayed_learning_rate = tf.compat.v1.train.polynomial_decay(init_learning_rate, global_step, decay_steps, decay_rate, end_learning_rate, power, cycle)
     elif decay_method == "step":
         decayed_learning_rate = tf.pow(init_learning_rate * decay_rate, floor(global_step / decay_steps))
     else:

@@ -22,7 +22,7 @@ def tfrecord_write(files_path_list, tfrecord_file_name):
     :param tfrecord_file_name:
     :return:
     """
-    writer = tf.python_io.TFRecordWriter(tfrecord_file_name)
+    writer = tf.io.TFRecordWriter(tfrecord_file_name)
     for index, files_path in enumerate(files_path_list):
         files_list = get_files_list(files_path)
         for file in files_list:
@@ -44,15 +44,15 @@ def tfrecord_write(files_path_list, tfrecord_file_name):
 
 
 def tfrecord_read(tfrecord_file_name):
-    filename_queue = tf.train.string_input_producer([tfrecord_file_name])
-    reader = tf.TFRecordReader()
+    filename_queue = tf.compat.v1.train.string_input_producer([tfrecord_file_name])
+    reader = tf.compat.v1.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
-    features = tf.parse_single_example(serialized_example,
+    features = tf.io.parse_single_example(serialized=serialized_example,
                                        features={
-                                           "label": tf.FixedLenFeature([], tf.int64),
-                                           "media": tf.FixedLenFeature([], tf.string),
+                                           "label": tf.io.FixedLenFeature([], tf.int64),
+                                           "media": tf.io.FixedLenFeature([], tf.string),
                                        })
-    img = tf.decode_raw(features['media'], tf.uint8)
+    img = tf.io.decode_raw(features['media'], tf.uint8)
     img = tf.reshape(img, [128, 128, 3])  # reshape为128*128的3通道图片
     img = tf.cast(img, tf.float32) * (1. / 255) - 0.5  # 在流中抛出img张量
     label = tf.cast(features["label"], tf.int32)  # 在流中抛出label张量

@@ -175,6 +175,8 @@ def config_train_file_read(config_file_path):
                     self.stego_train_path = file_content['full_samples_path']['stego_train_path']
                     self.stego_valid_path = file_content['full_samples_path']['stego_valid_path']
 
+                    self.cover_files_path, self.stego_files_path, self.cover_files_root, self.stego_files_root = None, None, None, None
+
                 # semi_sample_path
                 elif self.path_mode == "semi":
                     self.cover_files_path = file_content['semi_samples_path']['cover_files_path']

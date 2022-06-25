@@ -33,15 +33,15 @@ n_hidden_units = 128    # 隐藏层的神经元个数
 n_classes = 10          # 输出的数量，即分类的类别，0～9个数字，共有10个
 
 # placeholder
-x = tf.placeholder(tf.float32, [None, n_steps, n_inputs])
-y = tf.placeholder(tf.float32, [None, n_classes])
+x = tf.compat.v1.placeholder(tf.float32, [None, n_steps, n_inputs])
+y = tf.compat.v1.placeholder(tf.float32, [None, n_classes])
 
 # 参数初始化
 weights = {
     # (28, 128)
-    "in": tf.Variable(tf.random_normal([n_inputs, n_hidden_units])),
+    "in": tf.Variable(tf.random.normal([n_inputs, n_hidden_units])),
     # (128, 10)
-    "out": tf.Variable(tf.random_normal([n_hidden_units, n_classes]))
+    "out": tf.Variable(tf.random.normal([n_hidden_units, n_classes]))
 }
 biases = {
     # (128, )
@@ -62,12 +62,12 @@ def network(_input_data, _weights, _biases):
     # X_in ==> (128 batch, 28 steps, 128 hidden)
     x_in = tf.reshape(x_in, [-1, n_steps, n_hidden_units])
     # 这里采用基本的LSTM循环网络单元：basic LSTM Cell
-    lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(num_units=n_hidden_units, forget_bias=1.0, state_is_tuple=True)
+    lstm_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=n_hidden_units, forget_bias=1.0, state_is_tuple=True)
     # 初始化为零值，lstm单元由两个部分组成：(c_state, h_state)
     init_state = lstm_cell.zero_state(batch_size, dtype=tf.float32)
 
     # dynamic_rnn 接收张量(batch, steps, inputs)或者(steps, batch, inputs)x_in
-    outputs, final_state = tf.nn.dynamic_rnn(lstm_cell, x_in, initial_state=init_state, time_major=False)
+    outputs, final_state = tf.compat.v1.nn.dynamic_rnn(lstm_cell, x_in, initial_state=init_state, time_major=False)
     results = tf.matmul(final_state[1], _weights['out']) + _biases['out']
 
     return results
@@ -75,16 +75,16 @@ def network(_input_data, _weights, _biases):
 
 # 定义损失函数和优化器，优化器采用AdamOptimizer
 pred = network(x, weights, biases)
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
-train_op = tf.train.AdamOptimizer(lr).minimize(cost)
+cost = tf.reduce_mean(input_tensor=tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=tf.stop_gradient(y)))
+train_op = tf.compat.v1.train.AdamOptimizer(lr).minimize(cost)
 
 # 定义模型预测结果及准确率计算方法
-correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+correct_pred = tf.equal(tf.argmax(input=pred, axis=1), tf.argmax(input=y, axis=1))
+accuracy = tf.reduce_mean(input_tensor=tf.cast(correct_pred, tf.float32))
 
 # 在一个会话中启动图，开始训练，每20次输出1次准确率的大小
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
+with tf.compat.v1.Session() as sess:
+    sess.run(tf.compat.v1.global_variables_initializer())
     step = 0
     while step * batch_size < training_iters:
         batch_xs, batch_ys = mnist.train.next_batch(batch_size)

@@ -52,16 +52,19 @@ def audio_read_batch(audio_files_list, sampling_rate=44100, channel="both", offs
     files_num = len(audio_files_list)
 
     audio = audio_read(audio_files_list[0], sampling_rate=sampling_rate, channel=channel, offset=offset, duration=duration)
+    print(f"shape(audio) for {audio_files_list[0]}: {np.shape(audio)}")
     channels, samples = np.shape(audio)[0], np.shape(audio)[1]
 
     data = np.zeros([files_num, channels, samples], dtype=np.float32)
 
     i = 0
     for audio_file in audio_files_list:
-        content = audio_read(audio_file, sampling_rate=sampling_rate, channel=channel, offset=offset, duration=duration)
-        data[i] = content
+        try:
+            content = audio_read(audio_file, sampling_rate=sampling_rate, channel=channel, offset=offset, duration=duration)
+            data[i] = content
+        except:
+            print(f"\033[1;33mWARNING: Cannot process file {audio_file}\033[0m")
         i = i + 1
-
     return data
 
 

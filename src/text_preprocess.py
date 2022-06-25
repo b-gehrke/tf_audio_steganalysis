@@ -45,6 +45,7 @@ def text_read(text_file_path, height=200, width=576, channel=1, separator=","):
                 content.append(numbers)
 
             content = np.array(content)
+            content.resize(height, width)
 
             # reshape
             [h, w] = np.shape(content)
@@ -84,6 +85,7 @@ def text_read_batch(text_files_list, height=200, width=576, channel=1, separator
     i = 0
     for text_file_path in text_files_list:
         content = text_read(text_file_path, height=height, width=width, channel=channel, separator=separator)
+        # content = content.resize(height, width)
         data[i] = content
         i = i + 1
 

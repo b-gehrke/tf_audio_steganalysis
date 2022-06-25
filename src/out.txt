@@ -1,0 +1,3 @@
+WARNING:tensorflow:From /project/tf_audio_steganalysis/venv/lib/python3.8/site-packages/keras/layers/normalization/batch_normalization.py:514: _colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.

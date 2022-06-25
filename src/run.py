@@ -118,17 +118,17 @@ def train(args):
                                         decay_rate=decay_rate)                              # learning rate
 
     # placeholder
-    with tf.variable_scope("placeholder"):
-        data = tf.placeholder(dtype=tf.float32, shape=(None, height, width), name="data") if channel == 0 else \
-            tf.placeholder(dtype=tf.float32, shape=(None, height, width, channel), name="data")
-        labels = tf.placeholder(dtype=tf.int32, shape=(None, ), name="labels")
-        is_bn = tf.placeholder(dtype=tf.bool, name="is_bn")
+    with tf.compat.v1.variable_scope("placeholder"):
+        data = tf.compat.v1.placeholder(dtype=tf.float32, shape=(None, height, width), name="data") if channel == 0 else \
+            tf.compat.v1.placeholder(dtype=tf.float32, shape=(None, height, width, channel), name="data")
+        labels = tf.compat.v1.placeholder(dtype=tf.int32, shape=(None, ), name="labels")
+        is_bn = tf.compat.v1.placeholder(dtype=tf.bool, name="is_bn")
 
         # placeholder for siamese network
-        data_siamese = tf.placeholder(dtype=tf.float32, shape=(None, height, width), name="data_siamese") if channel == 0 else \
-            tf.placeholder(dtype=tf.float32, shape=(None, height, width, channel), name="data_siamese")
-        labels_siamese = tf.placeholder(dtype=tf.int32, shape=(None,), name="labels_siamese")
-        new_labels = tf.placeholder(dtype=tf.float32, shape=(None, ), name="new_labels")
+        data_siamese = tf.compat.v1.placeholder(dtype=tf.float32, shape=(None, height, width), name="data_siamese") if channel == 0 else \
+            tf.compat.v1.placeholder(dtype=tf.float32, shape=(None, height, width, channel), name="data_siamese")
+        labels_siamese = tf.compat.v1.placeholder(dtype=tf.int32, shape=(None,), name="labels_siamese")
+        new_labels = tf.compat.v1.placeholder(dtype=tf.float32, shape=(None, ), name="new_labels")
 
     # initialize the network
     if args.network not in networks:
@@ -152,7 +152,7 @@ def train(args):
         # accuracy_check = accuracy_layer(logits=logits, labels=labels)
 
     else:
-        with tf.variable_scope('siamese') as scope:
+        with tf.compat.v1.variable_scope('siamese') as scope:
             command1 = args.network + "(data, classes_num, is_bn)"
             command2 = args.network + "(data_siamese, classes_num, is_bn)"
             logits = eval(command1)
@@ -169,24 +169,24 @@ def train(args):
         accuracy_validation, false_positive_rate_validation, false_negative_rate_validation = evaluation(logits=logits, labels=labels)
 
     with tf.device("/cpu:0"):
-        tf.summary.scalar("loss_train", loss_train)
-        tf.summary.scalar("loss_validation", loss_validation)
-        tf.summary.scalar("accuracy_train", accuracy_train)
-        tf.summary.scalar("accuracy_validation", accuracy_validation)
-        summary_op = tf.summary.merge_all()
-        saver = tf.train.Saver(max_to_keep=max_to_keep,
+        tf.compat.v1.summary.scalar("loss_train", loss_train)
+        tf.compat.v1.summary.scalar("loss_validation", loss_validation)
+        tf.compat.v1.summary.scalar("accuracy_train", accuracy_train)
+        tf.compat.v1.summary.scalar("accuracy_validation", accuracy_validation)
+        summary_op = tf.compat.v1.summary.merge_all()
+        saver = tf.compat.v1.train.Saver(max_to_keep=max_to_keep,
                                keep_checkpoint_every_n_hours=keep_checkpoint_every_n_hours)
 
     # initialize
     try:
-        config = tf.ConfigProto()
+        config = tf.compat.v1.ConfigProto()
         config.allow_soft_placement = True
         config.gpu_options.allow_growth = True
 
-        with tf.Session(config=config) as sess:
-            train_writer_train = tf.summary.FileWriter(log_path + "/train", tf.get_default_graph())
-            train_writer_valid = tf.summary.FileWriter(log_path + "/validation", tf.get_default_graph())
-            init = tf.global_variables_initializer()
+        with tf.compat.v1.Session(config=config) as sess:
+            train_writer_train = tf.compat.v1.summary.FileWriter(log_path + "/train", tf.compat.v1.get_default_graph())
+            train_writer_valid = tf.compat.v1.summary.FileWriter(log_path + "/validation", tf.compat.v1.get_default_graph())
+            init = tf.compat.v1.global_variables_initializer()
             sess.run(init)
 
             # restore the model and keep training from the current breakpoint
@@ -211,7 +211,7 @@ def train(args):
                 print("Training starts from the beginning.")
 
             print("Start training...")
-            print("Numbers of network %s: %d" % (args.network, get_variables_number(tf.trainable_variables())))
+            print("Numbers of network %s: %d" % (args.network, get_variables_number(tf.compat.v1.trainable_variables())))
             print("Input data: (%d, %d)" % (height, width)) if channel == 0 else print("Input data: (%d, %d, %d)" % (height, width, channel))
 
             start_time_all = time.time()
@@ -235,13 +235,19 @@ def train(args):
                     cover_valid_data_list, cover_valid_label_list, stego_valid_data_list, stego_valid_label_list \
                         = read_data(cover_files_path, stego_files_path, start_idx=start_index_valid, end_idx=end_index_valid, file_type=file_type)
 
+                print(f"cover_train_path: {cover_train_path}, start_idx: {start_index_train}, end_idx: {end_index_train}, file_type: {file_type}")
+                print(f"Train Data: {len(cover_train_data_list)} cover, {len(cover_train_label_list)} cover labels, {len(stego_train_data_list)} stego, {len(stego_train_label_list)} stego labels")
+
                 # update the learning rate
                 lr = sess.run(learning_rate)
 
                 # train
                 train_iterations, train_loss, train_accuracy = 0, 0, 0
-                for x_train_batch, y_train_batch in \
-                        minibatches(cover_train_data_list, cover_train_label_list, stego_train_data_list, stego_train_label_list, batch_size):
+                mini_batches = minibatches(cover_train_data_list, cover_train_label_list, stego_train_data_list, stego_train_label_list, batch_size)
+
+                # print(f"Minibatches len: {sum(1 for _ in mini_batches)}")
+
+                for x_train_batch, y_train_batch in mini_batches:
                     # data read and process
                     x_train_data = get_data_batch(x_train_batch, height=height, width=width, channel=channel, carrier=carrier)
 
@@ -358,9 +364,9 @@ def test(args):
     stego_test_files_path = args.stego_test_path
 
     # placeholder
-    data = tf.placeholder(dtype=tf.float32, shape=(batch_size, height, width, channel), name="data")
-    labels = tf.placeholder(dtype=tf.int32, shape=(batch_size, ), name="label")
-    is_bn = tf.placeholder(dtype=tf.bool, name="is_bn")
+    data = tf.compat.v1.placeholder(dtype=tf.float32, shape=(batch_size, height, width, channel), name="data")
+    labels = tf.compat.v1.placeholder(dtype=tf.int32, shape=(batch_size, ), name="label")
+    is_bn = tf.compat.v1.placeholder(dtype=tf.bool, name="is_bn")
 
     # initialize the network
     if args.network not in networks:
@@ -379,16 +385,16 @@ def test(args):
     print("class number: %d" % classes_num)
     print("Start load network...")
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.allow_soft_placement = True
     config.gpu_options.allow_growth = True
 
     start_time = time.time()
 
-    model = tf.train.Saver()
-    with tf.Session() as sess:
+    model = tf.compat.v1.train.Saver()
+    with tf.compat.v1.Session() as sess:
         # load model
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
         model_file_path = get_model_file_path(args.models_path)
 
         if model_file_path is None:
@@ -444,8 +450,8 @@ def steganalysis_one(args):
     steganalysis_file_path = args.steganalysis_file_path
 
     # placeholder
-    data = tf.placeholder(dtype=tf.float32, shape=(1, height, width, channel), name="data")
-    is_bn = tf.placeholder(dtype=tf.bool, name="is_bn")
+    data = tf.compat.v1.placeholder(dtype=tf.float32, shape=(1, height, width, channel), name="data")
+    is_bn = tf.compat.v1.placeholder(dtype=tf.bool, name="is_bn")
 
     # initialize the network
     if args.network not in networks:
@@ -457,10 +463,10 @@ def steganalysis_one(args):
     logits = eval(command)
     logits = tf.nn.softmax(logits)
 
-    model = tf.train.Saver()
-    with tf.Session() as sess:
+    model = tf.compat.v1.train.Saver()
+    with tf.compat.v1.Session() as sess:
         # load model
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
         model_file_path = get_model_file_path(args.model_path)
         print(model_file_path)
         if model_file_path is None:
@@ -499,8 +505,8 @@ def steganalysis_batch(args):
     steganalysis_files_path = args.steganalysis_files_path
 
     # placeholder
-    data = tf.placeholder(dtype=tf.float32, shape=(None, height, width, channel), name="data")
-    is_bn = tf.placeholder(dtype=tf.bool, name="is_bn")
+    data = tf.compat.v1.placeholder(dtype=tf.float32, shape=(None, height, width, channel), name="data")
+    is_bn = tf.compat.v1.placeholder(dtype=tf.bool, name="is_bn")
 
     # initialize the network
     if args.network not in networks:
@@ -514,10 +520,10 @@ def steganalysis_batch(args):
 
     start_time = time.time()
 
-    model = tf.train.Saver()
-    with tf.Session() as sess:
+    model = tf.compat.v1.train.Saver()
+    with tf.compat.v1.Session() as sess:
         # load model
-        sess.run(tf.global_variables_initializer())
+        sess.run(tf.compat.v1.global_variables_initializer())
         model_file_path = get_model_file_path(args.models_path)
 
         if model_file_path is None:
@@ -536,7 +542,7 @@ def steganalysis_batch(args):
 
                 file_name = get_file_name(file_path)
                 ret = sess.run(logits, feed_dict={data: steganalysis_data, is_bn: False})
-                sess.run(tf.local_variables_initializer())
+                sess.run(tf.compat.v1.local_variables_initializer())
                 print(ret)
                 result = np.argmax(ret, 1)
                 prob = 100 * ret[0][result]
