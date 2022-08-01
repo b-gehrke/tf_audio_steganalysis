@@ -3,10 +3,10 @@
     "path_mode": "full",
     "task_name": "EECS_B_320_W_4_H_7_ER_10",
 	"full_samples_path": {
-        "cover_train_path": "/project/datasets/digitalhistory",
-        "cover_valid_path": "/project/datasets/digitalhistory",
-        "stego_train_path": "/project/datasets/digitalhistory-stego",
-        "stego_valid_path": "/project/datasets/digitalhistory-stego"
+        "cover_train_path": "/project/datasets/MCV/training/01-cover/female",
+        "cover_valid_path": "/project/datasets/MCV/testing/01-cover/female",
+        "stego_train_path": "/project/datasets/MCV/training/01-Improved-Spread-Spectrum/female",
+        "stego_valid_path": "/project/datasets/MCV/testing/01-Improved-Spread-Spectrum/female"
     },
     "files_path":{
         "tfrecords_path": "/project/tf_audio_steganalysis/tfrecords",
@@ -15,9 +15,9 @@
     },
     "index": {
         "start_index_train": null,
-        "end_index_train": 8000,
-        "start_index_valid": 8000,
-        "end_index_valid": 10000
+        "end_index_train": null,
+        "start_index_valid": null,
+        "end_index_valid": null
     },
 	"mode_config": {
 		"gpu_selection": "auto",

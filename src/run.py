@@ -19,6 +19,7 @@ from networks.audio_steganalysis import *
 from networks.image_steganalysis import *
 from networks.tested_steganalysis import *
 from networks.image_classification import *
+import csv
 
 """
     function: 
@@ -409,8 +410,8 @@ def test(args):
             if len(cover_test_data_list) < batch_size:
                 batch_size = len(cover_test_data_list)
 
-            csv_file = open('/home1/wyt/code/tf_audio_steganalysis/logit1.csv', 'w', encoding='utf-8', newline='\n')
-            csvwriter = csv.writer(datacsv, delimiter=',')
+            csv_file = open('/project/tf_audio_steganalysis/logit1.csv', 'w', encoding='utf-8', newline='\n')
+            csvwriter = csv.writer(csv_file, delimiter=',')
             test_iterations, test_accuracy, test_fpr, test_fnr = 0, 0, 0, 0
             for x_test_batch, y_test_batch in \
                     minibatches(cover_test_data_list, cover_test_label_list, stego_test_data_list, stego_test_label_list, batch_size):
