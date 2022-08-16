@@ -26,7 +26,7 @@ def main():
 
     # json config mode
     if params_num == 1:
-        config_file_path = "/project/tf_audio_steganalysis/src/config_file/config_train.json"
+        config_file_path = "./config_file/config_train.json"
         arguments = config_train_file_read(config_file_path)
     elif params_num == 2:
         config_file_path = "./config_file/config_" + sys.argv[1] + ".json"
